@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Health Dossier — MediQueue</title>
+  <meta name="description" content="View your complete medical records, appointments, diagnoses, medications and test results." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body { padding-top: 68px; }
+
+    /* ── DASHBOARD LAYOUT ── */
+    .dashboard {
+      display: flex; min-height: calc(100vh - 68px);
+    }
+
+    /* ── LEFT: PATIENT ID CARD ── */
+    .sidebar {
+      width: 300px; flex-shrink: 0;
+      padding: 28px 20px;
+      border-right: 1px solid rgba(201,147,58,.12);
+      position: sticky; top: 68px;
+      height: calc(100vh - 68px);
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .patient-id-card {
+      background:
+        linear-gradient(155deg, rgba(17,35,73,.9) 0%, rgba(8,16,32,1) 60%, rgba(12,25,50,.9) 100%);
+      border-radius: var(--radius-md);
+      border: 2px solid transparent;
+      position: relative; overflow: hidden;
+      padding: 24px 20px;
+    }
+    .patient-id-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: var(--radius-md);
+      padding: 2px;
+      background: linear-gradient(145deg, #9a6e22, #e8b86d, #c9933a, #9a6e22);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none;
+    }
+    .patient-id-card::after {
+      content: '';
+      position: absolute; inset: 8px;
+      border: 1px solid rgba(201,147,58,.1);
+      border-radius: calc(var(--radius-md) - 5px);
+      pointer-events: none;
+    }
+
+    /* card header */
+    .id-card-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; position: relative; z-index: 1;
+    }
+    .id-card-badge {
+      background: var(--gold-gradient);
+      color: #07111f; font-size: .65rem; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 100px;
+    }
+    .id-card-num {
+      font-size: .7rem; color: var(--text-muted);
+      font-family: 'Cormorant Garamond', serif; letter-spacing: 1px;
+    }
+
+    /* Photo */
+    .patient-avatar-lg {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 700;
+      border: 3px solid rgba(201,147,58,.4);
+      margin: 0 auto 14px;
+      box-shadow: 0 0 0 6px rgba(201,147,58,.08);
+      position: relative; z-index: 1;
+    }
+
+    .patient-name-card {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem; font-weight: 700;
+      text-align: center; margin-bottom: 4px;
+      position: relative; z-index: 1;
+    }
+    .patient-id-text {
+      text-align: center; font-size: .73rem;
+      color: var(--text-muted); letter-spacing: 1px;
+      margin-bottom: 16px; position: relative; z-index: 1;
+    }
+
+    .id-card-divider {
+      height: 2px; margin-bottom: 16px;
+      background: var(--gold-gradient);
+      border-radius: 1px; position: relative; z-index: 1;
+    }
+
+    .id-card-field {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 10px; position: relative; z-index: 1;
+      font-size: .8rem;
+    }
+    .id-card-field-lbl {
+      color: var(--text-muted); font-size: .72rem;
+      letter-spacing: .8px; text-transform: uppercase;
+      font-weight: 500;
+    }
+    .id-card-field-val {
+      font-weight: 600; text-align: right;
+      max-width: 55%;
+    }
+
+    .blood-group-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(224,85,85,.15); color: var(--red);
+      border: 1px solid rgba(224,85,85,.35);
+      border-radius: 6px; padding: 2px 10px;
+      font-weight: 700; font-size: .85rem;
+    }
+
+    /* Allergies */
+    .allergy-section { position: relative; z-index: 1; margin-top: 14px; }
+    .allergy-lbl {
+      font-size: .7rem; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-muted); margin-bottom: 8px;
+    }
+    .allergy-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .allergy-tag {
+      background: rgba(240,160,48,.1); color: var(--amber);
+      border: 1px solid rgba(240,160,48,.25);
+      border-radius: 100px; padding: 2px 8px; font-size: .7rem; font-weight: 600;
+    }
+
+    /* Stamp decoration */
+    .id-stamp {
+      position: absolute; bottom: 16px; right: 12px; z-index: 1;
+      width: 56px; height: 56px;
+      border: 2px solid rgba(76,175,136,.35);
+      border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transform: rotate(-12deg);
+      opacity: .6;
+    }
+    .id-stamp-text { font-size: .5rem; font-weight: 800; letter-spacing: 1.5px; color: var(--green); text-transform: uppercase; }
+    .id-stamp-icon { font-size: .85rem; color: var(--green); }
+
+    /* Sidebar nav items */
+    .sidebar-nav { display: flex; flex-direction: column; gap: 6px; }
+    .sidebar-nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: var(--radius-sm);
+      color: var(--text-soft); font-size: .88rem; font-weight: 500;
+      cursor: pointer; transition: background var(--fast), color var(--fast);
+      border: 1px solid transparent;
+    }
+    .sidebar-nav-item:hover {
+      background: rgba(201,147,58,.06); color: var(--gold-light);
+    }
+    .sidebar-nav-item.active {
+      background: rgba(201,147,58,.1); color: var(--gold);
+      border-color: rgba(201,147,58,.2);
+    }
+    .sidebar-nav-item .icon { font-size: 1.1rem; }
+
+    /* ── RIGHT: MAIN CONTENT ── */
+    .main-content {
+      flex: 1; padding: 28px 32px;
+      overflow-y: auto; min-width: 0;
+    }
+
+    .content-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .content-header h2 { font-size: 1.7rem; }
+
+    /* ── QUEUE CARD ── */
+    .queue-card {
+      padding: 28px 28px 24px;
+      margin-bottom: 24px;
+      position: relative; overflow: hidden;
+    }
+    .queue-card::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--gold-gradient);
+    }
+    .queue-grid {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 24px;
+      align-items: center;
+    }
+
+    .token-box {
+      background: var(--gold-gradient);
+      color: #07111f; padding: 16px 20px;
+      border-radius: var(--radius-sm);
+      text-align: center; flex-shrink: 0;
+    }
+    .token-lbl { font-size: .65rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+    .token-val { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; line-height: 1.1; margin-top: 2px; }
+
+    .queue-info h3 { font-size: 1.1rem; margin-bottom: 4px; }
+    .queue-info p  { font-size: .85rem; color: var(--text-soft); margin-bottom: 12px; }
+
+    .queue-pos-row {
+      display: flex; align-items: center; gap: 16px; margin-bottom: 10px;
+    }
+    .queue-pos-big {
+      font-family: 'Playfair Display', serif; font-size: 2.2rem;
+      font-weight: 700; line-height: 1; color: var(--gold);
+    }
+    .queue-pos-lbl { font-size: .8rem; color: var(--text-muted); }
+
+    .wait-box {
+      text-align: center; flex-shrink: 0;
+    }
+    .wait-time {
+      font-family: 'Playfair Display', serif; font-size: 2rem;
+      font-weight: 700; color: var(--text); line-height: 1;
+    }
+    .wait-lbl { font-size: .73rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+    .queue-progress-wrap { margin-top: 10px; }
+    .queue-progress-label {
+      display: flex; justify-content: space-between;
+      font-size: .75rem; color: var(--text-muted); margin-bottom: 6px;
+    }
+
+    /* ── APT CARD ── */
+    .apt-card {
+      padding: 20px 22px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 18px;
+    }
+    .apt-dot-line {
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+    }
+    .apt-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .apt-dot.upcoming { background: var(--gold); box-shadow: 0 0 0 4px rgba(201,147,58,.2); }
+    .apt-dot.completed { background: var(--green); }
+    .apt-dot.cancelled { background: var(--red); }
+    .apt-info { flex: 1; }
+    .apt-info h4 { font-size: .97rem; margin-bottom: 3px; }
+    .apt-info .meta { font-size: .8rem; color: var(--text-soft); }
+    .apt-token { text-align: right; }
+    .apt-token .token-badge {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem; color: var(--gold); font-weight: 600;
+    }
+
+    /* ── DIAGNOSIS CARD ── */
+    .dx-card { padding: 22px 24px; margin-bottom: 14px; }
+    .dx-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+    .dx-name { font-size: 1rem; font-weight: 600; margin-bottom: 3px; }
+    .dx-icd { font-size: .75rem; color: var(--text-muted); font-family: 'Cormorant Garamond', serif; letter-spacing: .5px; }
+    .dx-meta { font-size: .8rem; color: var(--text-soft); margin-top: 8px; }
+    .dx-notes { font-size: .82rem; color: var(--text-soft); background: rgba(255,255,255,.03); border-left: 3px solid rgba(201,147,58,.25); padding: 8px 12px; border-radius: 0 var(--radius-xs) var(--radius-xs) 0; margin-top: 12px; }
+
+    /* ── MED CARD ── */
+    .med-card { padding: 20px 22px; margin-bottom: 14px; }
+    .med-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .med-icon-box {
+      width: 42px; height: 42px; border-radius: var(--radius-xs);
+      background: rgba(91,155,213,.12); border: 1px solid rgba(91,155,213,.25);
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0;
+    }
+    .med-name { font-weight: 600; font-size: .97rem; }
+    .med-brand { font-size: .78rem; color: var(--text-muted); }
+    .med-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .med-detail { font-size: .8rem; }
+    .med-detail-lbl { color: var(--text-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .8px; }
+
+    /* ── TEST RESULT ── */
+    .test-card { padding: 22px 24px; margin-bottom: 14px; }
+    .test-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .test-name { font-size: 1rem; font-weight: 600; }
+    .test-meta { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
+    .param-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .param-table th {
+      text-align: left; font-size: .7rem; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-muted); font-weight: 600;
+      padding: 6px 10px; border-bottom: 1px solid rgba(201,147,58,.12);
+    }
+    .param-table td { padding: 8px 10px; }
+    .param-table tr:not(:last-child) td { border-bottom: 1px solid rgba(255,255,255,.04); }
+    .param-val.High { color: var(--red); font-weight: 600; }
+    .param-val.Low  { color: var(--blue); font-weight: 600; }
+    .param-val.Borderline { color: var(--amber); font-weight: 600; }
+    .param-val.Normal { color: var(--green); }
+
+    /* ── NOTIFICATION BELL ── */
+    .notif-badge {
+      position: relative; display: inline-flex;
+    }
+    .notif-badge::after {
+      content: '1'; position: absolute; top: -4px; right: -4px;
+      background: var(--red); color: #fff;
+      font-size: .6rem; font-weight: 700;
+      width: 16px; height: 16px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid rgba(201,147,58,.12); flex-direction: row; flex-wrap: wrap; padding: 16px; }
+      .patient-id-card { display: none; }
+      .queue-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-damask"></div>
+  <div id="toast-container"></div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a class="nav-brand" href="index.html">
+      <div class="nav-logo-box">🏥</div>
+      <span class="nav-brand-name">Medi<span>Queue</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="patient-dashboard.html" class="active">My Health</a></li>
+      <li><a href="doctor-select.html">Find Doctors</a></li>
+    </ul>
+    <div class="nav-right">
+      <span id="nav-name" class="text-soft" style="font-size:.85rem"></span>
+      <button class="btn btn-ghost btn-sm" onclick="AUTH.logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="dashboard">
+
+    <!-- ── SIDEBAR: ID CARD ── -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Patient ID Card -->
+      <div class="patient-id-card" id="id-card">
+        <div class="id-card-top">
+          <span class="id-card-badge">Active Patient</span>
+          <span class="id-card-num" id="pid-num"></span>
+        </div>
+
+        <!-- Avatar -->
+        <div class="patient-avatar-lg" id="pid-avatar"></div>
+        <div class="patient-name-card" id="pid-name"></div>
+        <div class="patient-id-text" id="pid-id"></div>
+
+        <div class="id-card-divider"></div>
+
+        <!-- Fields -->
+        <div class="id-card-field">
+          <span class="id-card-field-lbl">Date of Birth</span>
+          <span class="id-card-field-val" id="pid-dob"></span>
+        </div>
+        <div class="id-card-field">
+          <span class="id-card-field-lbl">Gender</span>
+          <span class="id-card-field-val" id="pid-gender"></span>
+        </div>
+        <div class="id-card-field">
+          <span class="id-card-field-lbl">Blood Group</span>
+          <span class="id-card-field-val">
+            <span class="blood-group-badge" id="pid-blood"></span>
+          </span>
+        </div>
+        <div class="id-card-field">
+          <span class="id-card-field-lbl">Phone</span>
+          <span class="id-card-field-val small" id="pid-phone"></span>
+        </div>
+        <div class="id-card-field">
+          <span class="id-card-field-lbl">Member Since</span>
+          <span class="id-card-field-val" id="pid-since"></span>
+        </div>
+
+        <!-- Allergies -->
+        <div class="allergy-section">
+          <div class="allergy-lbl">⚠️ Known Allergies</div>
+          <div class="allergy-tags" id="pid-allergies"></div>
+        </div>
+
+        <!-- Active stamp -->
+        <div class="id-stamp">
+          <span class="id-stamp-icon">✓</span>
+          <span class="id-stamp-text">Verified</span>
+        </div>
+      </div>
+
+      <!-- Sidebar nav -->
+      <div class="sidebar-nav">
+        <div class="sidebar-nav-item active" data-tab="queue" onclick="switchTab('queue', this)">
+          <span class="icon">🎫</span> Queue & Appointments
+        </div>
+        <div class="sidebar-nav-item" data-tab="diagnoses" onclick="switchTab('diagnoses', this)">
+          <span class="icon">📋</span> Diagnoses
+        </div>
+        <div class="sidebar-nav-item" data-tab="medications" onclick="switchTab('medications', this)">
+          <span class="icon">💊</span> Medications
+        </div>
+        <div class="sidebar-nav-item" data-tab="tests" onclick="switchTab('tests', this)">
+          <span class="icon">🧪</span> Test Results
+        </div>
+        <div class="sidebar-nav-item" data-tab="history" onclick="switchTab('history', this)">
+          <span class="icon">📁</span> Visit History
+        </div>
+        <div class="divider"></div>
+        <div class="sidebar-nav-item" onclick="window.location='doctor-select.html'">
+          <span class="icon">🩺</span> Book Appointment
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="main-content">
+
+      <!-- ── TAB: QUEUE ── -->
+      <div id="tab-queue" class="anim-fadeIn">
+        <div class="content-header">
+          <h2>🎫 Queue &amp; Appointments</h2>
+          <a href="doctor-select.html" class="btn btn-gold btn-sm">+ Book New</a>
+        </div>
+
+        <!-- Active appointment queue tracker -->
+        <div id="active-queue-card"></div>
+
+        <!-- All appointments -->
+        <h3 style="font-size:1rem; color:var(--text-soft); margin-bottom:16px; font-family:'Inter',sans-serif; font-weight:500;">
+          All Appointments
+        </h3>
+        <div id="appointments-list"></div>
+      </div>
+
+      <!-- ── TAB: DIAGNOSES ── -->
+      <div id="tab-diagnoses" class="hidden anim-fadeIn">
+        <div class="content-header">
+          <h2>📋 Diagnoses</h2>
+          <span class="badge badge-muted" id="dx-count"></span>
+        </div>
+        <div id="diagnoses-list"></div>
+      </div>
+
+      <!-- ── TAB: MEDICATIONS ── -->
+      <div id="tab-medications" class="hidden anim-fadeIn">
+        <div class="content-header">
+          <h2>💊 Medications</h2>
+          <span class="badge badge-blue" id="med-active-count"></span>
+        </div>
+        <div id="medications-list"></div>
+      </div>
+
+      <!-- ── TAB: TESTS ── -->
+      <div id="tab-tests" class="hidden anim-fadeIn">
+        <div class="content-header">
+          <h2>🧪 Test Results</h2>
+          <span class="badge badge-muted" id="test-count"></span>
+        </div>
+        <div id="tests-list"></div>
+      </div>
+
+      <!-- ── TAB: HISTORY ── -->
+      <div id="tab-history" class="hidden anim-fadeIn">
+        <div class="content-header">
+          <h2>📁 Visit History</h2>
+        </div>
+        <div id="history-list"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/queue.js"></script>
+  <script>
+    // ── INIT ─────────────────────────────────────────────────
+    const user = AUTH.requireAuth('patient');
+    if (!user) throw new Error('Unauthorized');
+
+    document.getElementById('nav-name').textContent = user.name;
+
+    // Load fresh data
+    const db      = getDB();
+    const patient = db.patients.find(p => p.id === user.id);
+
+    // ── POPULATE ID CARD ────────────────────────────────────
+    const colors = ['#4caf88','#5b9bd5','#c9933a','#c45e8a','#e05555'];
+    const c = colors[user.name.charCodeAt(0) % colors.length];
+    document.getElementById('pid-avatar').style.cssText  = `background:${c}22;color:${c};`;
+    document.getElementById('pid-avatar').textContent    = user.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+    document.getElementById('pid-name').textContent      = patient.name;
+    document.getElementById('pid-id').textContent        = patient.id;
+    document.getElementById('pid-num').textContent       = `#${patient.id.split('-').pop()}`;
+    document.getElementById('pid-dob').textContent       = new Date(patient.dob).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    document.getElementById('pid-gender').textContent    = patient.gender;
+    document.getElementById('pid-blood').textContent     = patient.bloodGroup;
+    document.getElementById('pid-phone').textContent     = patient.phone;
+    document.getElementById('pid-since').textContent     = new Date(patient.joinedOn).toLocaleDateString('en-IN',{month:'short',year:'numeric'});
+    patient.allergies.forEach(a => {
+      const el = document.createElement('span');
+      el.className = 'allergy-tag'; el.textContent = a;
+      document.getElementById('pid-allergies').appendChild(el);
+    });
+
+    // ── TAB SWITCHING ────────────────────────────────────────
+    function switchTab(name, el) {
+      document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
+      document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
+      document.getElementById(`tab-${name}`).classList.remove('hidden');
+      if (el) el.classList.add('active');
+    }
+
+    // ── QUEUE TAB ────────────────────────────────────────────
+    function renderQueue() {
+      const upcoming = patient.appointments.filter(a => a.status === 'upcoming');
+      const activeQC = document.getElementById('active-queue-card');
+
+      if (upcoming.length === 0) {
+        activeQC.innerHTML = `<div class="card" style="padding:28px;text-align:center;margin-bottom:24px;">
+          <div style="font-size:2.5rem;margin-bottom:10px;">🗓️</div>
+          <h3 style="margin-bottom:8px;">No Active Queue</h3>
+          <p style="color:var(--text-soft);font-size:.9rem;margin-bottom:20px;">You don't have any upcoming appointments. Book one now!</p>
+          <a href="doctor-select.html" class="btn btn-gold">Book an Appointment</a>
+        </div>`;
+      } else {
+        const appt  = upcoming[0];
+        const total = 12; // mock total
+        const done  = total - appt.queuePosition;
+        const pct   = Math.max(5, Math.round((done / total) * 100));
+
+        activeQC.innerHTML = `
+        <div class="queue-card card anim-fadeInUp" id="live-queue-card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+            <span class="dot dot-green dot-pulse"></span>
+            <span style="font-size:.78rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--green);">Live Queue</span>
+            <span style="margin-left:auto;font-size:.78rem;color:var(--text-muted);" id="live-badge">${appt.token}</span>
+          </div>
+          <div class="queue-grid">
+            <div class="token-box">
+              <div class="token-lbl">Your Token</div>
+              <div class="token-val">${appt.token}</div>
+            </div>
+            <div class="queue-info">
+              <h3>${appt.doctorName}</h3>
+              <p>${appt.department} &nbsp;·&nbsp; Room ${appt.roomNo || '—'} &nbsp;·&nbsp; ${appt.date}</p>
+              <div class="queue-pos-row">
+                <div>
+                  <div class="queue-pos-big" id="q-pos">${appt.queuePosition}</div>
+                  <div class="queue-pos-lbl">patients ahead</div>
+                </div>
+                <div style="flex:1;">
+                  <div class="queue-progress-wrap">
+                    <div class="queue-progress-label">
+                      <span>Queue Progress</span>
+                      <span id="q-pct">${pct}%</span>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-fill" id="q-fill" style="width:${pct}%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="wait-box">
+              <div class="wait-time" id="q-wait">${appt.estimatedWait}</div>
+              <div class="wait-lbl">Est. Wait</div>
+              <div style="margin-top:12px;">
+                ${appt.priority ? `<span class="badge badge-${appt.priority.color}">${appt.priority.icon} ${appt.priority.level}</span>` : '<span class="badge badge-muted">🟢 Low</span>'}
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // Render all appointments
+      const listEl = document.getElementById('appointments-list');
+      if (patient.appointments.length === 0) {
+        listEl.innerHTML = '<p class="text-muted center" style="padding:20px">No appointment history.</p>';
+        return;
+      }
+      listEl.innerHTML = patient.appointments.map(a => `
+        <div class="apt-card card card-hover">
+          <div class="apt-dot-line">
+            <div class="apt-dot ${a.status}"></div>
+          </div>
+          <div class="apt-info">
+            <h4>${a.doctorName}</h4>
+            <div class="meta">${a.department} &nbsp;·&nbsp; ${a.date} at ${a.time}</div>
+            ${a.roomNo ? `<div class="meta">Room: ${a.roomNo}</div>` : ''}
+          </div>
+          <div class="apt-token">
+            <div class="token-badge">${a.token}</div>
+            <div style="margin-top:6px;">
+              <span class="badge badge-${a.status === 'upcoming' ? 'amber' : a.status === 'completed' ? 'green' : 'red'}">${a.status}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── DIAGNOSES TAB ────────────────────────────────────────
+    function renderDiagnoses() {
+      document.getElementById('dx-count').textContent = `${patient.diagnoses.length} Records`;
+      const el = document.getElementById('diagnoses-list');
+      if (!patient.diagnoses.length) { el.innerHTML = '<div class="empty-state"><span class="icon">📋</span><h3>No Diagnoses</h3></div>'; return; }
+      el.innerHTML = patient.diagnoses.map(d => `
+        <div class="dx-card card card-hover anim-fadeInUp">
+          <div class="dx-header">
+            <div>
+              <div class="dx-name">${d.illness}</div>
+              <div class="dx-icd">ICD-10: ${d.icdCode}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+              <span class="badge badge-${d.status === 'Active' ? (d.severity === 'Moderate' ? 'amber' : d.severity === 'Severe' ? 'red' : 'blue') : 'green'}">${d.status}</span>
+              <span class="badge badge-muted">${d.severity}</span>
+            </div>
+          </div>
+          <div class="dx-meta">
+            🩺 ${d.diagnosedBy} &nbsp;·&nbsp; 📅 ${new Date(d.diagnosedOn).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
+          </div>
+          <div class="dx-notes">${d.notes}</div>
+        </div>
+      `).join('');
+    }
+
+    // ── MEDICATIONS TAB ──────────────────────────────────────
+    function renderMeds() {
+      const active = patient.medications.filter(m => m.status === 'Active');
+      document.getElementById('med-active-count').textContent = `${active.length} Active`;
+      const el = document.getElementById('medications-list');
+      el.innerHTML = patient.medications.map(m => `
+        <div class="med-card card card-hover anim-fadeInUp">
+          <div class="med-header">
+            <div class="med-icon-box">💊</div>
+            <div>
+              <div class="med-name">${m.drugName} ${m.dosage}</div>
+              <div class="med-brand">${m.brandName} &nbsp;·&nbsp; ${m.purpose}</div>
+            </div>
+            <span class="badge badge-${m.status === 'Active' ? 'green' : 'muted'}" style="margin-left:auto">${m.status}</span>
+          </div>
+          <div class="med-detail-grid">
+            <div class="med-detail"><div class="med-detail-lbl">Frequency</div>${m.frequency}</div>
+            <div class="med-detail"><div class="med-detail-lbl">Route</div>${m.route}</div>
+            <div class="med-detail"><div class="med-detail-lbl">Started</div>${m.startDate}</div>
+            <div class="med-detail"><div class="med-detail-lbl">Until</div>${m.endDate}</div>
+            <div class="med-detail"><div class="med-detail-lbl">Prescribed by</div>${m.prescribedBy}</div>
+            ${m.status === 'Active' ? `<div class="med-detail"><div class="med-detail-lbl">Refills Left</div><span class="text-gold">${m.refillsLeft}</span></div>` : ''}
+          </div>
+          <div class="dx-notes" style="margin-top:10px">📌 ${m.instructions}</div>
+        </div>
+      `).join('');
+    }
+
+    // ── TESTS TAB ────────────────────────────────────────────
+    function renderTests() {
+      document.getElementById('test-count').textContent = `${patient.testResults.length} Reports`;
+      const el = document.getElementById('tests-list');
+      el.innerHTML = patient.testResults.map(t => `
+        <div class="test-card card card-hover anim-fadeInUp">
+          <div class="test-header">
+            <div>
+              <div class="test-name">${t.testName}</div>
+              <div class="test-meta">📅 ${t.date} &nbsp;·&nbsp; ${t.lab}</div>
+              <div class="test-meta">🩺 Ordered by ${t.orderedBy}</div>
+            </div>
+            <span class="badge badge-${t.overallStatus === 'Normal' ? 'green' : t.overallStatus === 'Attention' ? 'amber' : 'red'}">${t.overallStatus}</span>
+          </div>
+          <table class="param-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Result</th>
+                <th>Normal Range</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${t.parameters.map(p => `
+                <tr>
+                  <td>${p.name}</td>
+                  <td class="param-val ${p.status}">${p.value}</td>
+                  <td style="color:var(--text-muted)">${p.normalRange}</td>
+                  <td><span class="badge badge-${p.status === 'Normal' ? 'green' : p.status === 'High' ? 'red' : 'amber'}">${p.status}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ${t.notes ? `<div class="dx-notes" style="margin-top:12px">📝 ${t.notes}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // ── HISTORY TAB ─────────────────────────────────────────
+    function renderHistory() {
+      const el = document.getElementById('history-list');
+      const all = [...patient.appointments].sort((a,b) => new Date(b.bookedAt||b.date) - new Date(a.bookedAt||a.date));
+      if (!all.length) { el.innerHTML = '<div class="empty-state"><span class="icon">📁</span><h3>No History</h3></div>'; return; }
+      el.innerHTML = `<div style="position:relative;padding-left:24px;">
+        <div style="position:absolute;left:5px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--gold),transparent);opacity:.2;border-radius:1px;"></div>
+        ${all.map((a,i) => `
+          <div style="position:relative;margin-bottom:20px;">
+            <div style="position:absolute;left:-22px;top:8px;width:10px;height:10px;border-radius:50%;background:${a.status==='upcoming'?'var(--gold)':'var(--green)'};box-shadow:0 0 0 3px rgba(201,147,58,.15);"></div>
+            <div class="card" style="padding:18px 20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <strong>${a.doctorName}</strong>
+                <span class="badge badge-${a.status === 'upcoming' ? 'amber' : 'green'}">${a.status}</span>
+              </div>
+              <div style="font-size:.82rem;color:var(--text-soft)">${a.department} &nbsp;·&nbsp; ${a.date} &nbsp;·&nbsp; Token: <strong class="text-gold">${a.token}</strong></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    // ── LIVE QUEUE SIMULATION ────────────────────────────────
+    let queueInterval;
+    function startQueueSim() {
+      queueInterval = setInterval(() => {
+        const db2    = getDB();
+        const p2     = db2.patients.find(p => p.id === user.id);
+        const active = p2?.appointments.find(a => a.status === 'upcoming');
+        if (!active) return;
+
+        const posEl  = document.getElementById('q-pos');
+        const waitEl = document.getElementById('q-wait');
+        const fillEl = document.getElementById('q-fill');
+        const pctEl  = document.getElementById('q-pct');
+        if (!posEl) return;
+
+        // Simulate movement
+        if (active.queuePosition > 1 && Math.random() < 0.25) {
+          active.queuePosition--;
+          const doctor = db2.doctors.find(d => d.id === active.doctorId);
+          active.estimatedWait = QUEUE.formatWaitTime(QUEUE.calculateWaitTime(doctor, active.queuePosition));
+          saveDB(db2);
+
+          posEl.textContent  = active.queuePosition;
+          waitEl.textContent = active.estimatedWait;
+          const total = 12;
+          const done  = total - active.queuePosition;
+          const pct   = Math.max(5, Math.round((done / total) * 100));
+          fillEl.style.width = pct + '%';
+          pctEl.textContent  = pct + '%';
+        }
+
+        // Near-turn notification
+        if (active.queuePosition === 2) {
+          showToast('🔔', "Almost your turn!", `${active.doctorName} — you're 2 patients away. Head to ${active.roomNo}!`, 'amber');
+        }
+        if (active.queuePosition === 1) {
+          showToast('🚨', "Your turn is next!", `Please proceed to ${active.roomNo} immediately.`, 'green');
+        }
+      }, 8000);
+    }
+
+    // Toast helper
+    function showToast(icon, title, body) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span class="toast-icon">${icon}</span><div><div class="toast-title">${title}</div><div class="toast-body">${body}</div></div>`;
+      document.getElementById('toast-container').appendChild(t);
+      setTimeout(() => t.remove(), 5000);
+    }
+
+    // ── BOOT ─────────────────────────────────────────────────
+    renderQueue();
+    renderDiagnoses();
+    renderMeds();
+    renderTests();
+    renderHistory();
+    startQueueSim();
+  </script>
+</body>
+</html>

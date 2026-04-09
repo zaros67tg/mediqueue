@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Login — MediQueue</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body { min-height:100vh; display:flex; flex-direction:column; }
+    .login-page { flex:1; display:flex; align-items:center; justify-content:center; padding:100px 20px 40px; }
+    .id-card-wrap { perspective:1200px; width:100%; max-width:460px; }
+    .id-card {
+      position:relative;
+      background:linear-gradient(160deg,rgba(17,35,73,.95) 0%,rgba(10,22,40,.98) 50%,rgba(8,17,32,.95) 100%);
+      border:2px solid transparent; background-clip:padding-box;
+      border-radius:var(--radius-lg); padding:40px 40px 36px;
+      box-shadow:0 0 0 2px transparent,0 24px 60px rgba(0,0,0,.7),0 0 60px rgba(201,147,58,.08);
+      overflow:hidden;
+    }
+    .id-card::before {
+      content:''; position:absolute; inset:0; border-radius:var(--radius-lg); padding:2px;
+      background:linear-gradient(145deg,#9a6e22,#e8b86d,#c9933a,#9a6e22,#e8b86d);
+      -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+    }
+    .id-card::after {
+      content:''; position:absolute; inset:12px;
+      border:1px solid rgba(201,147,58,.12); border-radius:calc(var(--radius-lg) - 8px); pointer-events:none;
+    }
+    .card-watermark { position:absolute; right:-20px; top:50%; transform:translateY(-50%); font-size:14rem; opacity:.03; pointer-events:none; line-height:1; user-select:none; }
+    .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; position:relative; z-index:1; }
+    .card-hospital-name { font-family:'Playfair Display',serif; font-size:.95rem; font-weight:700; color:var(--text); line-height:1.3; }
+    .card-hospital-name small { display:block; font-family:'Inter',sans-serif; font-size:.68rem; font-weight:400; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase; margin-top:2px; }
+    .card-logo-box { width:44px; height:44px; background:var(--gold-gradient); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; }
+    .card-stripe { height:3px; margin-bottom:28px; background:var(--gold-gradient); border-radius:2px; position:relative; z-index:1; }
+    .card-title { font-family:'Playfair Display',serif; font-size:1.7rem; margin-bottom:4px; position:relative; z-index:1; }
+    .card-subtitle { font-size:.82rem; color:var(--text-muted); letter-spacing:.5px; margin-bottom:32px; position:relative; z-index:1; }
+    .login-form { position:relative; z-index:1; }
+    .input-group { margin-bottom:18px; }
+    .forgot-link { display:block; text-align:right; font-size:.8rem; color:var(--gold); margin-top:-10px; margin-bottom:20px; opacity:.7; transition:opacity var(--fast); }
+    .forgot-link:hover { opacity:1; }
+    .error-banner { background:rgba(224,85,85,.12); border:1px solid rgba(224,85,85,.3); border-radius:var(--radius-xs); padding:10px 14px; color:var(--red); font-size:.85rem; margin-bottom:16px; display:none; }
+    .demo-hint { margin-top:24px; background:rgba(201,147,58,.07); border:1px solid rgba(201,147,58,.18); border-radius:var(--radius-sm); padding:14px 16px; position:relative; z-index:1; }
+    .demo-hint-title { font-size:.73rem; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--gold); margin-bottom:6px; }
+    .demo-hint p { font-size:.82rem; color:var(--text-soft); line-height:1.5; }
+    .demo-hint code { background:rgba(255,255,255,.07); border-radius:4px; padding:1px 6px; font-size:.8rem; color:var(--gold-light); }
+    .card-footer-link { text-align:center; margin-top:20px; font-size:.84rem; color:var(--text-muted); position:relative; z-index:1; }
+    .card-footer-link a { color:var(--gold); }
+    .barcode { display:flex; align-items:flex-end; gap:2px; margin-top:28px; justify-content:center; position:relative; z-index:1; opacity:.18; }
+    .barcode-bar { background:var(--text); border-radius:1px; width:2px; }
+    .login-info { max-width:420px; padding:40px; }
+    .info-headline { font-family:'Playfair Display',serif; font-size:2.4rem; line-height:1.15; margin-bottom:16px; }
+    .info-body { color:var(--text-soft); margin-bottom:32px; line-height:1.7; }
+    .info-feature { display:flex; align-items:flex-start; gap:14px; margin-bottom:18px; }
+    .info-feature-icon { font-size:1.4rem; flex-shrink:0; margin-top:2px; }
+    .info-feature h4 { font-size:.95rem; margin-bottom:3px; }
+    .info-feature p  { font-size:.83rem; color:var(--text-soft); }
+    .two-col { display:flex; align-items:center; gap:60px; max-width:920px; width:100%; }
+    .two-col .id-card-wrap { flex-shrink:0; }
+    @media (max-width:860px) { .two-col { flex-direction:column; gap:32px; } .login-info { padding:0; } }
+  </style>
+</head>
+<body>
+  <div class="bg-damask"></div>
+  <div id="toast-container"></div>
+  <nav class="navbar">
+    <a class="nav-brand" href="index.html">
+      <div class="nav-logo-box">🏥</div>
+      <span class="nav-brand-name">Medi<span>Queue</span></span>
+    </a>
+    <div class="nav-right">
+      <a href="index.html" class="btn btn-ghost btn-sm">← Back</a>
+      <a href="doctor-login.html" class="btn btn-outline btn-sm">Doctor Login</a>
+    </div>
+  </nav>
+  <main class="login-page">
+    <div class="two-col">
+      <div class="login-info anim-fadeInUp">
+        <p class="small uppercase text-gold" style="margin-bottom:12px;letter-spacing:2px;">Patient Portal</p>
+        <h2 class="info-headline">Your Health.<br/><em class="text-gold">Anywhere.</em></h2>
+        <p class="info-body">Sign in with your Patient ID to access your complete medical profile, book appointments, and track your queue in real-time.</p>
+        <div class="info-feature"><span class="info-feature-icon">📋</span><div><h4>Complete Medical Dossier</h4><p>Diagnoses, medications, test results and full appointment history in one place.</p></div></div>
+        <div class="info-feature"><span class="info-feature-icon">🎫</span><div><h4>Live Queue Token</h4><p>Get a unique token and watch your position update in real-time.</p></div></div>
+        <div class="info-feature"><span class="info-feature-icon">🔔</span><div><h4>Turn Notifications</h4><p>We alert you when your turn is approaching so you don't have to wait in the OPD.</p></div></div>
+      </div>
+      <div class="id-card-wrap anim-fadeInUp d-2">
+        <div class="id-card">
+          <span class="card-watermark">🏥</span>
+          <div class="card-header">
+            <div><div class="card-hospital-name">MediQueue General Hospital<small>Patient Access Portal</small></div></div>
+            <div class="card-logo-box">🏥</div>
+          </div>
+          <div class="card-stripe"></div>
+          <h2 class="card-title">Patient Login</h2>
+          <p class="card-subtitle">Enter your credentials to access patient records</p>
+          <div class="error-banner" id="error-banner"></div>
+          <form class="login-form" id="login-form" onsubmit="handleLogin(event)">
+            <div class="input-group">
+              <label class="input-label" for="patient-id">Patient ID</label>
+              <div class="input-wrap">
+                <span class="input-icon">🪪</span>
+                <input id="patient-id" type="text" class="input-field" placeholder="e.g. PAT-2026-001" autocomplete="username" required />
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="input-label" for="password">Password</label>
+              <div class="input-wrap">
+                <span class="input-icon">🔒</span>
+                <input id="password" type="password" class="input-field" placeholder="••••••••" autocomplete="current-password" required />
+              </div>
+            </div>
+            <a href="#" class="forgot-link">Forgot password?</a>
+            <button type="submit" class="btn btn-gold btn-full btn-lg" id="login-btn">Access My Records →</button>
+          </form>
+          <div class="demo-hint">
+            <div class="demo-hint-title">📌 Demo Credentials</div>
+            <p>ID: <code>PAT-2026-001</code>&nbsp;&nbsp; Password: <code>pat</code></p>
+          </div>
+          <p class="card-footer-link">Not registered? <a href="#">Request Patient ID</a></p>
+          <div class="barcode" id="barcode"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const bc = document.getElementById('barcode');
+    for (let i=0;i<50;i++) { const b=document.createElement('div'); b.className='barcode-bar'; b.style.height=(Math.random()*24+8)+'px'; bc.appendChild(b); }
+    function showToast(icon,title,body) {
+      const t=document.createElement('div'); t.className='toast';
+      t.innerHTML=`<span class="toast-icon">${icon}</span><div><div class="toast-title">${title}</div><div class="toast-body">${body}</div></div>`;
+      document.getElementById('toast-container').appendChild(t); setTimeout(()=>t.remove(),4000);
+    }
+    function handleLogin(e) {
+      e.preventDefault();
+      const id=document.getElementById('patient-id').value.trim();
+      const pwd=document.getElementById('password').value.trim();
+      const btn=document.getElementById('login-btn');
+      const err=document.getElementById('error-banner');
+      btn.textContent='Verifying...'; btn.disabled=true; err.style.display='none';
+      setTimeout(()=>{
+        const result=AUTH.login('patient',id,pwd);
+        if(result.success){
+          showToast('✅','Welcome back!',`Logging in as ${result.user.name}…`);
+          setTimeout(()=>{ window.location.href='patient-dashboard.html'; },1000);
+        } else {
+          err.textContent=result.error; err.style.display='block';
+          btn.textContent='Access My Records →'; btn.disabled=false;
+        }
+      },700);
+    }
+    if(localStorage.getItem('mq_role')==='patient') window.location.href='patient-dashboard.html';
+  </script>
+</body>
+</html>
