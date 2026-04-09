@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Dashboard — MediQueue</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* Clinical Light Native Theme */
+    body { background: #f0f2f8; color: #1a2333; min-height: 100vh; }
+    .bg-damask { display: none; }
+    
+    .navbar { background: #fff; border-bottom: 1px solid #e2e8f0; }
+    .nav-brand-name { color: #1a2333; }
+    
+    .dash-container { max-width: 1400px; margin: 0 auto; padding: 100px 24px 40px; display: flex; gap: 30px; height: 100vh; }
+    
+    /* LEFT KANBAN QUEUE */
+    .queue-panel {
+      width: 380px; flex-shrink: 0; background: #fff; border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .queue-header { padding: 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
+    .queue-header h2 { font-size: 1.1rem; font-family: 'Inter', sans-serif; font-weight: 700; color: #1e293b; margin: 0; }
+    
+    .queue-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    
+    .queue-card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); padding: 14px;
+      position: relative; overflow: hidden; transition: box-shadow 0.2s;
+    }
+    .queue-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .queue-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #cbd5e1; }
+    
+    .queue-card.urgent { border-color: rgba(224,85,85,0.4); background: #fffbfb; }
+    .queue-card.urgent::before { background: var(--red); }
+    
+    .qc-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .qc-token { font-weight: 700; color: #0f172a; }
+    .qc-codes { font-family: monospace; color: #64748b; font-size: .8rem; }
+    .qc-name { font-size: .95rem; font-weight: 600; color: #334155; margin-bottom: 4px; }
+    .qc-symp { font-size: .8rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* MULTI-PURPOSE DESK PANE */
+    .desk-pane {
+      flex: 1; background: #fff; border: 1px solid #e2e8f0; border-radius: var(--radius-md);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.03); position: relative; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* VIEW 1: Waiting / Code Entry */
+    .view-standby { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center; }
+    .view-standby h1 { font-family: 'Playfair Display', serif; color: #0f172a; margin-bottom: 8px; }
+    .view-standby p { color: #64748b; margin-bottom: 40px; }
+    
+    .code-input-group { border: 2px solid #e2e8f0; border-radius: var(--radius-md); overflow: hidden; display: flex; max-width: 400px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .code-input { flex: 1; border: none; padding: 20px; font-size: 1.5rem; text-align: center; outline: none; text-transform: uppercase; letter-spacing: 2px; color: #0f172a; }
+    .code-input::placeholder { color: #cbd5e1; font-weight: 300; }
+    .code-input:focus { border-color: #3b82f6; }
+    .code-btn { background: #1e293b; color: white; border: none; padding: 0 24px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .code-btn:hover { background: #0f172a; }
+
+    /* VIEW 2: Active Consultation */
+    .view-consult { display: none; height: 100%; flex-direction: column; }
+    .consult-header { background: #0f172a; color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .consult-body { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px; overflow-y: auto; background: #f8fafc; }
+    
+    /* Panels inside consult */
+    .c-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+    .c-panel h3 { font-size: .9rem; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
+    
+    /* Highlight box */
+    .c-alert-box { background: rgba(224,85,85,0.05); border: 1px solid rgba(224,85,85,0.2); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px; }
+    .c-alert-title { color: var(--red); font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    
+    /* Notes input */
+    .rx-input { width: 100%; min-height: 150px; padding: 12px; border: 1px solid #cbd5e1; border-radius: var(--radius-xs); resize: vertical; font-family: inherit; font-size: .95rem; outline: none; margin-bottom: 16px; }
+    .rx-input:focus { border-color: #3b82f6; }
+
+    .bottom-bar { padding: 16px 24px; border-top: 1px solid #e2e8f0; background: #fff; display: flex; justify-content: space-between; align-items: center; }
+    
+    .btn-action { background: #22c55e; color: white; padding: 14px 32px; border-radius: var(--radius-sm); font-weight: 600; font-size: 1rem; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(34,197,94,0.3); transition: all 0.2s; }
+    .btn-action:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(34,197,94,0.4); }
+
+    /* Switch */
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; font-size: .85rem; font-weight: 600; color: #64748b; }
+    .toggle { position: relative; width: 44px; height: 24px; background: #22c55e; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+    .toggle::after { content: ''; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s; }
+    .toggle.off { background: #cbd5e1; }
+    .toggle.off::after { left: 22px; }
+
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" style="position: fixed; top: 0; width: 100%; z-index: 100;">
+    <a class="nav-brand" href="index.html">
+      <div class="nav-logo-box" style="background:#1e293b; color:#fff; border:none;">🏥</div>
+      <span class="nav-brand-name">MediQueue <span style="font-size: .8rem; color: #64748b; font-family:'Inter',sans-serif; text-transform:uppercase; letter-spacing:1px; margin-left: 8px;">Doctor Console</span></span>
+    </a>
+    <div class="nav-right" id="nav-right">
+      <!-- Injected by JS -->
+    </div>
+  </nav>
+
+  <div class="dash-container">
+    
+    <!-- LEFT: THE KANBAN QUEUE -->
+    <div class="queue-panel">
+      <div class="queue-header">
+        <h2>Live Queue</h2>
+        <div class="toggle-wrap">
+          <span id="avail-txt">Available</span>
+          <div class="toggle" id="avail-toggle" onclick="toggleAvailability()"></div>
+        </div>
+      </div>
+      <div class="queue-list" id="queue-list">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- RIGHT: THE DESK -->
+    <div class="desk-pane">
+      
+      <!-- View 1: Enter Code -->
+      <div class="view-standby" id="view-standby">
+        <div style="font-size: 4rem; margin-bottom: 20px; opacity: 0.8;">🩺</div>
+        <h1>Awaiting Patient</h1>
+        <p>Call the next token and enter their unique consultation code to unlock records.</p>
+        
+        <div class="code-input-group">
+          <input type="text" id="consult-code" class="code-input" placeholder="e.g. C-A7X9" autocomplete="off" onkeydown="if(event.key==='Enter') unlockPatient()">
+          <button class="code-btn" onclick="unlockPatient()">Unlock</button>
+        </div>
+        <div id="code-err" style="color:var(--red); font-size:.85rem; margin-top:12px; display:none;">Invalid Code. Please verify with patient.</div>
+      </div>
+
+      <!-- View 2: Ongoing Consultation -->
+      <div class="view-consult anim-fadeIn" id="view-consult">
+        <div class="consult-header">
+          <div>
+            <h2 id="pc-name" style="font-weight:700; margin-bottom:2px; font-size:1.4rem;">Patient Name</h2>
+            <div style="color:#94a3b8; font-size:.85rem;"><span id="pc-token" style="color:#fff; font-weight:bold; background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:4px; margin-right:8px;"></span> ID: <span id="pc-id"></span></div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size:.8rem; color:#94a3b8; text-transform:uppercase; margin-bottom:4px;">Blood</div>
+            <div id="pc-blood" style="font-weight:bold; color:#ef4444; background:#fee2e2; padding:2px 10px; border-radius:4px; display:inline-block;">O+</div>
+          </div>
+        </div>
+
+        <div class="consult-body">
+          <!-- Left Column -->
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <div class="c-panel" style="border-color: rgba(224,85,85,0.3); background: #fffcfc;">
+              <h3 style="color:var(--red);">🚨 AI Triage Alert</h3>
+              <div id="pc-triage">
+                <!-- AI details -->
+              </div>
+            </div>
+
+            <div class="c-panel">
+              <h3>📝 Prescription & Notes</h3>
+              <textarea class="rx-input" id="rx-notes" placeholder="Type diagnosis, prescriptions, or clinical notes for this visit here..."></textarea>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div style="display:flex; flex-direction:column; gap:20px;">
+            <div class="c-panel">
+              <h3>⚠️ Patient Vitals & Allergies</h3>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;" id="pc-allergies"></div>
+              <div style="font-size:.9rem; color:#475569;">
+                <div><strong>Age:</strong> <span id="pc-age"></span></div>
+                <div style="margin-top:6px;"><strong>Gender:</strong> <span id="pc-gender"></span></div>
+              </div>
+            </div>
+
+            <div class="c-panel" style="flex:1;">
+              <h3>📁 EHR / Visit History</h3>
+              <div id="pc-history" style="font-size:.85rem; color:#475569;">
+                <!-- History injected here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-bar">
+          <div style="color:#64748b; font-size:.85rem;">Consultation started at <span id="time-start" style="font-weight:600; color:#0f172a"></span></div>
+          <button class="btn-action" onclick="finishConsultation()">
+            ✓ Mark Complete & Call Next
+          </button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // ── BOOT ──────────────────────────────────────────────
+    const user = AUTH.requireAuth('doctor');
+    if (!user) throw new Error("Unauthorized");
+
+    let db = getDB();
+    let me = db.doctors.find(d => d.id === user.id);
+    let myQueue = [];
+    let currentAppt = null;
+    let currentPatient = null;
+
+    document.getElementById('nav-right').innerHTML = `
+      <span style="font-weight:500; margin-right:16px;">${me.name}</span>
+      <button class="btn btn-sm" style="border:1px solid #e2e8f0; background:white; color:#0f172a;" onclick="AUTH.logout()">Sign Out</button>
+    `;
+
+    // ── QUEUE LOGIC ─────────────────────────────────────────
+    function fetchMyQueue() {
+      db = getDB();
+      myQueue = [];
+      db.patients.forEach(p => {
+        p.appointments.forEach(a => {
+          if (a.doctorId === me.id && a.status === 'upcoming') {
+            myQueue.push({ apt: a, pat: p });
+          }
+        });
+      });
+      
+      // 2:1 Weighted Algorithm Sort Simulation: 
+      // High priority items moved towards the front without fully starving routine items.
+      myQueue.sort((a,b) => {
+        const scoreA = a.apt.priority?.score || 3; // 1 High, 3 Low
+        const scoreB = b.apt.priority?.score || 3;
+        // In real backend, we sequence based on enqueue time + priority ratio
+        // For UI sort, we just group priority
+        if(scoreA !== scoreB) return scoreA - scoreB;
+        return new Date(a.apt.bookedAt||0) - new Date(b.apt.bookedAt||0);
+      });
+
+      renderQueue();
+    }
+
+    function renderQueue() {
+      const list = document.getElementById('queue-list');
+      if (myQueue.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:40px 20px; color:#94a3b8;">No patients in queue for today.</div>`;
+        return;
+      }
+
+      list.innerHTML = myQueue.map((item, idx) => {
+        const isUrgent = item.apt.priority?.score === 1 || item.apt.priority?.level === 'High';
+        return `
+        <div class="queue-card ${isUrgent ? 'urgent' : ''}">
+          <div class="qc-top">
+            <span class="qc-token">${item.apt.token}</span>
+            <span class="qc-codes" title="Internal Code">${item.apt.consultationCode || '—'}</span>
+          </div>
+          <div class="qc-name">${item.pat.name}</div>
+          <div class="qc-symp">
+            ${isUrgent ? '<strong style="color:var(--red);">🚨 High Priority</strong> — ' : ''}
+            ${item.apt.symptoms || 'Routine Visit'}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── AVAILABILITY TOGGLE ─────────────────────────────────
+    function toggleAvailability() {
+      me.isAvailable = !me.isAvailable;
+      const tog = document.getElementById('avail-toggle');
+      const txt = document.getElementById('avail-txt');
+      if(me.isAvailable) {
+        tog.classList.remove('off'); txt.textContent = "Available";
+      } else {
+        tog.classList.add('off'); txt.textContent = "In Surgery / Off";
+      }
+      
+      // update db
+      db.doctors.find(d => d.id === me.id).isAvailable = me.isAvailable;
+      saveDB(db);
+    }
+    
+    // Init state
+    if(!me.isAvailable) {
+      document.getElementById('avail-toggle').classList.add('off');
+      document.getElementById('avail-txt').textContent = "In Surgery / Off";
+    }
+
+    // ── CODE ENTRY & UNLOCK ────────────────────────────────
+    function unlockPatient() {
+      const val = document.getElementById('consult-code').value.trim().toUpperCase();
+      const err = document.getElementById('code-err');
+      err.style.display = 'none';
+
+      const match = myQueue.find(item => item.apt.consultationCode === val || item.apt.token === val);
+      
+      if (!match) {
+        err.style.display = 'block';
+        return;
+      }
+
+      // Valid code -> Enter Consult Mode
+      currentAppt = match.apt;
+      currentPatient = match.pat;
+      
+      document.getElementById('view-standby').style.display = 'none';
+      document.getElementById('view-consult').style.display = 'flex';
+      populateConsult(currentPatient, currentAppt);
+    }
+
+    function populateConsult(pat, apt) {
+      document.getElementById('pc-name').textContent = pat.name;
+      document.getElementById('pc-token').textContent = apt.token;
+      document.getElementById('pc-id').textContent = pat.id;
+      document.getElementById('pc-blood').textContent = pat.bloodGroup;
+      document.getElementById('pc-age').textContent = pat.age;
+      document.getElementById('pc-gender').textContent = pat.gender;
+      document.getElementById('time-start').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+      // Triage
+      const tBox = document.getElementById('pc-triage');
+      if (apt.priority && apt.priority.score < 3) {
+        tBox.innerHTML = `
+          <div style="font-weight:700; color:var(--red); font-size:1.1rem; margin-bottom:8px;">${apt.priority.level} Priority</div>
+          <div style="margin-bottom:8px;"><strong>Reported:</strong> ${apt.symptoms}</div>
+          <div style="background:rgba(0,0,0,0.03); padding:10px; border-radius:4px; font-size:.85rem;">
+            <strong>AI Prediction:</strong> Matches profile for Cardiology/Urgent observation.
+          </div>
+        `;
+      } else {
+        tBox.innerHTML = `
+          <div style="font-weight:600; color:#059669;">Routine Visit</div>
+          <div style="margin-top:4px;"><strong>Reason:</strong> ${apt.symptoms || 'General Checkup'}</div>
+        `;
+      }
+
+      // Allergies
+      const aBox = document.getElementById('pc-allergies');
+      if (!pat.allergies.length || pat.allergies[0] === 'None') {
+        aBox.innerHTML = `<span style="background:#f1f5f9; padding:2px 8px; border-radius:4px; font-size:.8rem; color:#64748b">No Known Allergies</span>`;
+      } else {
+        aBox.innerHTML = pat.allergies.map(a => `<span style="background:#fee2e2; color:#ef4444; font-weight:600; font-size:.8rem; padding:2px 8px; border-radius:4px;">${a}</span>`).join('');
+      }
+
+      // History snippet
+      const hBox = document.getElementById('pc-history');
+      if (pat.diagnoses.length > 0) {
+        hBox.innerHTML = pat.diagnoses.map(d => `
+          <div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #f1f5f9;">
+            <div style="font-weight:600; color:#334155;">${d.illness}</div>
+            <div style="font-family:'Cormorant Garamond',serif; color:#64748b;">Diagnosed: ${new Date(d.diagnosedOn).getFullYear()} · Status: ${d.status}</div>
+          </div>
+        `).join('');
+      } else {
+        hBox.innerHTML = "No significant prior history on record.";
+      }
+
+      document.getElementById('rx-notes').value = '';
+    }
+
+    // ── FINISH CONSULTATION ────────────────────────────────
+    function finishConsultation() {
+      const rx = document.getElementById('rx-notes').value.trim();
+      
+      // Update DB
+      const patRef = db.patients.find(p => p.id === currentPatient.id);
+      const apptRef = patRef.appointments.find(a => a.id === currentAppt.id);
+      const docRef = db.doctors.find(d => d.id === me.id);
+      
+      apptRef.status = 'completed';
+      apptRef.queuePosition = null;
+      apptRef.estimatedWait = null;
+      if (docRef.currentQueueSize > 0) docRef.currentQueueSize--;
+      
+      // Add record to diagnoses if doc typed something (simple mock)
+      if (rx.length > 5) {
+        patRef.diagnoses.unshift({
+          id: `DX-${Date.now()}`,
+          illness: "Consultation Note",
+          icdCode: "—",
+          diagnosedOn: new Date().toISOString(),
+          diagnosedBy: me.name,
+          status: "Active",
+          severity: "Unknown",
+          notes: rx
+        });
+      }
+
+      // Re-sequence remaining queue for this doctor
+      // (Decrement everyone's queue position who is assigned to me)
+      db.patients.forEach(p => {
+        p.appointments.forEach(a => {
+          if (a.doctorId === me.id && a.status === 'upcoming' && a.id !== currentAppt.id) {
+            a.queuePosition = Math.max(1, a.queuePosition - 1);
+            a.estimatedWait = (a.queuePosition * me.avgConsultationTime) + " mins";
+          }
+        });
+      });
+      docRef.waitTime = (docRef.currentQueueSize * docRef.avgConsultationTime) + " mins";
+
+      saveDB(db);
+
+      // Return to Standby
+      document.getElementById('view-consult').style.display = 'none';
+      document.getElementById('view-standby').style.display = 'flex';
+      document.getElementById('consult-code').value = '';
+      
+      // Flash Toast
+      const t = document.createElement('div');
+      t.className = 'toast'; t.style.background = '#22c55e'; t.style.color = '#fff'; t.style.border = 'none';
+      t.innerHTML = `<span class="toast-icon">✓</span><div><div class="toast-title" style="color:#fff">Completed</div><div class="toast-body" style="color:rgba(255,255,255,0.9)">Saved records for ${currentPatient.name}.</div></div>`;
+      document.getElementById('toast-container').appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+
+      // Reload queue
+      fetchMyQueue();
+
+      // In a real app we'd dispatch WebSocket event here -> "queue_updated"
+      console.log("[WebSocket] broadcast: queue updated for doctor -> " + me.id);
+    }
+
+    // Refresh queue automatically every 15 secs
+    setInterval(fetchMyQueue, 15000);
+    fetchMyQueue();
+
+  </script>
+</body>
+</html>

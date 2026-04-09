@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Find a Doctor — MediQueue</title>
+  <meta name="description" content="Browse MediQueue specialists by department, compare ratings and availability, and book appointments instantly." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body { padding-top: 68px; }
+
+    /* ── PAGE HEADER ── */
+    .page-hero {
+      padding: 52px 28px 36px;
+      text-align: center;
+    }
+    .page-hero h1 { font-size: clamp(2rem, 4vw, 2.8rem); margin-bottom: 10px; }
+    .page-hero p  { color: var(--text-soft); max-width: 480px; margin: 0 auto 32px; }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 14px;
+      padding: 0 28px 28px; max-width: 1320px; margin: 0 auto;
+    }
+    .search-box {
+      position: relative; flex: 1; max-width: 280px;
+    }
+    .search-box input {
+      width: 100%; background: rgba(255,255,255,.05);
+      border: 1px solid rgba(201,147,58,.2); border-radius: 100px;
+      color: var(--text); font-size: .88rem;
+      padding: 10px 16px 10px 40px; outline: none;
+      transition: border-color var(--fast);
+    }
+    .search-box input:focus { border-color: var(--gold); }
+    .search-box input::placeholder { color: var(--text-muted); }
+    .search-icon {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--gold); font-size: .95rem;
+    }
+
+    /* ── COMPARE BAR ── */
+    .compare-bar {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 800;
+      background: rgba(6,14,30,.95);
+      border: 1px solid rgba(201,147,58,.35);
+      border-radius: var(--radius-xl);
+      padding: 14px 24px;
+      display: flex; align-items: center; gap: 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.6), var(--gold-glow);
+      backdrop-filter: blur(20px);
+      transition: opacity var(--mid), transform var(--mid);
+      opacity: 0; pointer-events: none;
+      min-width: 340px; justify-content: space-between;
+    }
+    .compare-bar.visible { opacity: 1; pointer-events: all; transform: translateX(-50%) translateY(0); }
+    .compare-avatars { display: flex; gap: -6px; }
+    .compare-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700;
+      border: 2px solid var(--navy-800);
+      margin-right: -6px;
+    }
+    .compare-text { font-size: .88rem; color: var(--text-soft); }
+    .compare-text strong { color: var(--text); }
+
+    /* ── DOCTORS GRID ── */
+    .doctors-section {
+      padding: 0 28px 80px; max-width: 1320px; margin: 0 auto;
+    }
+    .doctors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    /* ── DOCTOR CARD (Gallery Frame) ── */
+    .doctor-card {
+      position: relative; overflow: hidden;
+      border-radius: var(--radius-md);
+      padding: 0;
+      cursor: default;
+      transition: transform var(--mid), box-shadow var(--mid);
+    }
+    /* Outer golden frame */
+    .doctor-card { border: 2px solid transparent; }
+    .doctor-card { background:
+      linear-gradient(rgba(9,18,36,.95), rgba(9,18,36,.95)) padding-box,
+      linear-gradient(155deg, #7a5010, #e8b86d, #c9933a, #a07030, #e8b86d, #7a5010) border-box;
+      box-shadow: 0 0 0 1px rgba(201,147,58,.08), 0 12px 40px rgba(0,0,0,.55);
+    }
+    .doctor-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 0 1px rgba(201,147,58,.2), 0 20px 60px rgba(0,0,0,.65), var(--gold-glow);
+    }
+    /* Inner frame line */
+    .doctor-card::before {
+      content: '';
+      position: absolute; inset: 7px;
+      border: 1px solid rgba(201,147,58,.1);
+      border-radius: calc(var(--radius-md) - 5px);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Availability ribbon */
+    .avail-ribbon {
+      position: absolute; top: 14px; right: 14px; z-index: 2;
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(6,14,30,.8); backdrop-filter: blur(8px);
+      border-radius: 100px; padding: 4px 10px;
+      font-size: .72rem; font-weight: 600;
+    }
+
+    /* Compare checkbox */
+    .compare-chk-wrap {
+      position: absolute; top: 14px; left: 14px; z-index: 2;
+    }
+    .compare-chk {
+      width: 22px; height: 22px;
+      border: 2px solid rgba(201,147,58,.4);
+      border-radius: 6px;
+      background: rgba(6,14,30,.8);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: .75rem;
+      transition: background var(--fast), border-color var(--fast);
+    }
+    .compare-chk.checked {
+      background: var(--gold); border-color: var(--gold); color: #07111f;
+    }
+
+    /* Card body */
+    .dc-body { padding: 28px 24px 20px; position: relative; z-index: 1; }
+
+    /* Avatar area */
+    .dc-avatar-area { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+    .dc-avatar {
+      width: 68px; height: 68px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 700; flex-shrink: 0;
+      border: 2px solid rgba(201,147,58,.25);
+    }
+    .dc-name { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 3px; }
+    .dc-spec { font-size: .82rem; color: var(--gold-light); font-weight: 500; margin-bottom: 4px; }
+    .dc-qual { font-size: .74rem; color: var(--text-muted); line-height: 1.4; }
+
+    /* Stats row */
+    .dc-stats {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 1px; margin: 16px 0;
+      background: rgba(201,147,58,.1); border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .dc-stat {
+      background: rgba(9,18,36,.8);
+      padding: 10px 8px; text-align: center;
+    }
+    .dc-stat-val { font-size: 1rem; font-weight: 700; line-height: 1; margin-bottom: 3px; }
+    .dc-stat-lbl { font-size: .65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; }
+
+    /* Queue status */
+    .dc-queue { margin-bottom: 14px; }
+    .dc-queue-label { font-size: .72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+    .dc-queue-row { display: flex; align-items: center; gap: 10px; }
+    .dc-queue-num { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--gold); }
+    .dc-queue-info { font-size: .78rem; color: var(--text-soft); }
+
+    /* Days chips */
+    .day-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; }
+    .day-chip {
+      font-size: .68rem; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; border: 1px solid rgba(201,147,58,.2);
+      color: var(--text-soft);
+    }
+    .day-chip.today { background: rgba(201,147,58,.15); color: var(--gold-light); border-color: rgba(201,147,58,.3); }
+
+    /* Card footer */
+    .dc-footer {
+      display: flex; gap: 8px; padding: 14px 24px;
+      border-top: 1px solid rgba(201,147,58,.1);
+      position: relative; z-index: 1;
+    }
+
+    /* ── COMPARE MODAL ── */
+    .compare-modal-inner { max-width: 900px !important; }
+    .compare-table {
+      width: 100%; border-collapse: collapse; font-size: .85rem;
+    }
+    .compare-table th {
+      text-align: left; padding: 10px 16px;
+      font-size: .72rem; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-muted);
+      border-bottom: 1px solid rgba(201,147,58,.12);
+    }
+    .compare-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .compare-table td:first-child { color: var(--text-muted); font-size: .8rem; }
+    .compare-col-header {
+      font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700;
+    }
+
+    /* ── BOOKING MODAL ── */
+    .timeslot-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .timeslot {
+      border: 1px solid rgba(201,147,58,.2); border-radius: var(--radius-sm);
+      padding: 10px 8px; text-align: center;
+      cursor: pointer; font-size: .82rem; font-weight: 500;
+      transition: background var(--fast), border-color var(--fast), color var(--fast);
+      color: var(--text-soft);
+    }
+    .timeslot:hover { border-color: var(--gold); color: var(--gold-light); background: rgba(201,147,58,.05); }
+    .timeslot.selected { background: rgba(201,147,58,.15); border-color: var(--gold); color: var(--gold); }
+    .timeslot.booked { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
+
+    @media (max-width: 640px) {
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .search-box { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-damask"></div>
+  <div id="toast-container"></div>
+
+  <!-- COMPARE BAR -->
+  <div class="compare-bar" id="compare-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="compare-avatars" id="c-avatars"></div>
+      <div class="compare-text"><strong id="c-count">0</strong> doctors selected</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="clearCompare()">Clear</button>
+      <button class="btn btn-gold btn-sm" onclick="openCompareModal()">Compare →</button>
+    </div>
+  </div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a class="nav-brand" href="index.html">
+      <div class="nav-logo-box">🏥</div>
+      <span class="nav-brand-name">Medi<span>Queue</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="patient-dashboard.html">My Health</a></li>
+      <li><a href="doctor-select.html" class="active">Find Doctors</a></li>
+    </ul>
+    <div class="nav-right" id="nav-right">
+      <a href="patient-login.html" class="btn btn-outline btn-sm">Patient Login</a>
+    </div>
+  </nav>
+
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <p class="small uppercase text-gold" style="letter-spacing:2px;margin-bottom:10px;">Our Specialists</p>
+    <h1 class="anim-fadeInUp">Find Your <span class="text-gold">Perfect Doctor</span></h1>
+    <p class="anim-fadeInUp d-1">Browse our team of specialists, compare ratings and availability, and book your appointment instantly.</p>
+
+    <!-- FILTER BAR -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:10px;" class="anim-fadeInUp d-2">
+      <div class="search-box" style="max-width:260px;">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Search doctor or specialty…" oninput="filterDoctors()" />
+      </div>
+    </div>
+
+    <!-- DEPT CHIPS -->
+    <div class="chip-group" style="justify-content:center;" id="dept-chips">
+      <div class="chip active" data-dept="all" onclick="setDept('all', this)">All</div>
+    </div>
+  </div>
+
+  <!-- DOCTORS GRID -->
+  <div class="doctors-section">
+    <div class="doctors-grid" id="doctors-grid"></div>
+  </div>
+
+  <!-- BOOKING MODAL -->
+  <div class="modal-backdrop" id="book-modal-bg">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Book Appointment</h3>
+        <button class="modal-close" onclick="closeBookModal()">✕</button>
+      </div>
+
+      <div id="book-doctor-info" style="display:flex;gap:14px;align-items:center;margin-bottom:24px;padding:16px;background:rgba(255,255,255,.03);border-radius:var(--radius-sm);border:1px solid rgba(201,147,58,.12);"></div>
+
+      <div class="input-group" style="margin-bottom:18px;">
+        <label class="input-label">Chief Complaint / Symptoms</label>
+        <div class="input-wrap">
+          <span class="input-icon">📝</span>
+          <input type="text" class="input-field" id="symptoms-input" placeholder="e.g. chest pain, fever, headache…" />
+        </div>
+      </div>
+
+      <label class="input-label" style="margin-bottom:12px;">Select Time Slot</label>
+      <div class="timeslot-grid" id="timeslot-grid"></div>
+
+      <div id="book-error" class="error-banner mt-12"></div>
+
+      <div style="display:flex;gap:10px;margin-top:24px;">
+        <button class="btn btn-ghost full-width" onclick="closeBookModal()">Cancel</button>
+        <button class="btn btn-gold full-width" id="confirm-book-btn" onclick="confirmBooking()">Confirm Booking ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE MODAL -->
+  <div class="modal-backdrop" id="compare-modal-bg">
+    <div class="modal" style="max-width:860px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Doctor Comparison</h3>
+        <button class="modal-close" onclick="document.getElementById('compare-modal-bg').classList.remove('open')">✕</button>
+      </div>
+      <div id="compare-modal-body" style="overflow-x:auto;"></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/queue.js"></script>
+  <script>
+    // ── STATE ────────────────────────────────────────────────
+    let db          = getDB();
+    let selectedDept = 'all';
+    let compareList  = [];
+    let bookingDoc   = null;
+    let selectedSlot = null;
+
+    // Nav: show logout if logged in
+    const user = AUTH.getCurrentUser();
+    if (user && user.role === 'patient') {
+      document.getElementById('nav-right').innerHTML =
+        `<span class="text-soft" style="font-size:.85rem">${user.name}</span>
+         <button class="btn btn-ghost btn-sm" onclick="AUTH.logout()">Sign Out</button>`;
+    }
+
+    // ── BUILD DEPT CHIPS ─────────────────────────────────────
+    const deptChips = document.getElementById('dept-chips');
+    db.departments.forEach(d => {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.dataset.dept = d.name;
+      chip.textContent = `${d.icon} ${d.name}`;
+      chip.onclick = function() { setDept(d.name, this); };
+      deptChips.appendChild(chip);
+    });
+
+    function setDept(dept, el) {
+      selectedDept = dept;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      renderDoctors();
+    }
+
+    // ── RENDER DOCTORS ────────────────────────────────────────
+    function renderDoctors() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const grid  = document.getElementById('doctors-grid');
+      let docs    = db.doctors;
+
+      if (selectedDept !== 'all') docs = docs.filter(d => d.specialty === selectedDept);
+      if (query) docs = docs.filter(d =>
+        d.name.toLowerCase().includes(query) ||
+        d.specialty.toLowerCase().includes(query) ||
+        d.qualification.toLowerCase().includes(query)
+      );
+
+      if (!docs.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><span class="icon">🔍</span><h3>No Doctors Found</h3><p>Try a different search or department filter.</p></div>`;
+        return;
+      }
+
+      const today = new Date().toLocaleDateString('en-US',{weekday:'short'});
+
+      grid.innerHTML = docs.map(doc => {
+        const isCompared = compareList.includes(doc.id);
+        const stars = '★'.repeat(Math.floor(doc.rating)) + (doc.rating % 1 >= .5 ? '☆' : '');
+        const days  = doc.availableDays.map(d =>
+          `<span class="day-chip ${d === today ? 'today' : ''}">${d}</span>`
+        ).join('');
+
+        return `
+        <div class="doctor-card anim-fadeInUp" id="dc-${doc.id}" data-id="${doc.id}">
+          <!-- Compare checkbox -->
+          <div class="compare-chk-wrap">
+            <div class="compare-chk ${isCompared ? 'checked' : ''}" id="chk-${doc.id}" onclick="toggleCompare('${doc.id}')" title="Add to compare">
+              ${isCompared ? '✓' : ''}
+            </div>
+          </div>
+
+          <!-- Availability -->
+          <div class="avail-ribbon">
+            <span class="dot ${doc.isAvailable ? 'dot-green dot-pulse' : 'dot-red'}"></span>
+            ${doc.isAvailable ? 'Available' : 'Unavailable'}
+          </div>
+
+          <!-- Card Body -->
+          <div class="dc-body">
+            <div class="dc-avatar-area">
+              <div class="dc-avatar" style="background:${doc.color}22;color:${doc.color};">${doc.initials}</div>
+              <div>
+                <div class="dc-name">${doc.name}</div>
+                <div class="dc-spec">${doc.specialty}</div>
+                <div class="dc-qual">${doc.qualification}</div>
+              </div>
+            </div>
+
+            <!-- Stars -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+              <span class="stars" style="font-size:.85rem">${stars}</span>
+              <span style="font-size:.82rem;color:var(--gold-light);font-weight:600">${doc.rating}</span>
+              <span style="font-size:.75rem;color:var(--text-muted)">(${doc.reviewsCount} reviews)</span>
+            </div>
+
+            <!-- Stats -->
+            <div class="dc-stats">
+              <div class="dc-stat">
+                <div class="dc-stat-val">${doc.experience}yr</div>
+                <div class="dc-stat-lbl">Experience</div>
+              </div>
+              <div class="dc-stat">
+                <div class="dc-stat-val">₹${doc.consultationFee}</div>
+                <div class="dc-stat-lbl">Fee</div>
+              </div>
+              <div class="dc-stat">
+                <div class="dc-stat-val">${doc.avgConsultationTime}m</div>
+                <div class="dc-stat-lbl">Avg. Time</div>
+              </div>
+            </div>
+
+            <!-- Queue -->
+            <div class="dc-queue">
+              <div class="dc-queue-label">Current Queue</div>
+              <div class="dc-queue-row">
+                <div class="dc-queue-num">${doc.currentQueueSize}</div>
+                <div class="dc-queue-info">patients waiting<br/>
+                  <strong style="color:var(--text)">${doc.isAvailable ? '⏱ ~' + doc.waitTime : '— Not Available'}</strong>
+                </div>
+              </div>
+              <div class="progress-bar" style="margin-top:6px;">
+                <div class="progress-fill" style="width:${Math.min(100,doc.currentQueueSize*4)}%"></div>
+              </div>
+            </div>
+
+            <!-- Days -->
+            <div class="day-chips">${days}</div>
+          </div>
+
+          <!-- Footer -->
+          <div class="dc-footer">
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="toggleCompare('${doc.id}')">
+              ${isCompared ? '✓ Comparing' : '+ Compare'}
+            </button>
+            <button class="btn btn-gold btn-sm" style="flex:1.5"
+              ${doc.isAvailable ? '' : 'disabled style="opacity:.5;cursor:not-allowed;"'}
+              onclick="openBookModal('${doc.id}')">
+              Book Now →
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function filterDoctors() { renderDoctors(); }
+
+    // ── COMPARE ──────────────────────────────────────────────
+    function toggleCompare(docId) {
+      const idx = compareList.indexOf(docId);
+      if (idx === -1) {
+        if (compareList.length >= 3) { showToast('⚠️','Max 3','You can compare up to 3 doctors at a time.'); return; }
+        compareList.push(docId);
+      } else {
+        compareList.splice(idx, 1);
+      }
+      renderDoctors();
+      updateCompareBar();
+    }
+
+    function clearCompare() {
+      compareList = [];
+      updateCompareBar();
+      renderDoctors();
+    }
+
+    function updateCompareBar() {
+      const bar = document.getElementById('compare-bar');
+      document.getElementById('c-count').textContent = compareList.length;
+
+      const avatarsEl = document.getElementById('c-avatars');
+      avatarsEl.innerHTML = compareList.map(id => {
+        const doc = db.doctors.find(d => d.id === id);
+        return `<div class="compare-avatar" style="background:${doc.color}22;color:${doc.color}">${doc.initials}</div>`;
+      }).join('');
+
+      if (compareList.length >= 2) {
+        bar.classList.add('visible');
+      } else {
+        bar.classList.remove('visible');
+      }
+    }
+
+    function openCompareModal() {
+      const docs = compareList.map(id => db.doctors.find(d => d.id === id));
+      const rows = [
+        ['Specialty',       d => d.specialty],
+        ['Qualification',   d => d.qualification],
+        ['Experience',      d => d.experience + ' years'],
+        ['Rating',          d => `${'★'.repeat(Math.floor(d.rating))} ${d.rating} (${d.reviewsCount})`],
+        ['Consultation Fee',d => `₹${d.consultationFee}`],
+        ['Avg. Consult Time', d => d.avgConsultationTime + ' min'],
+        ['Queue Size',      d => d.currentQueueSize + ' patients'],
+        ['Wait Time',       d => d.isAvailable ? '~' + d.waitTime : '—'],
+        ['Available Days',  d => d.availableDays.join(', ')],
+        ['Languages',       d => d.languages.join(', ')],
+        ['Room',            d => d.roomNo || '—'],
+        ['Status',          d => d.isAvailable ? '🟢 Available' : '🔴 Unavailable'],
+      ];
+
+      document.getElementById('compare-modal-body').innerHTML = `
+        <table class="compare-table">
+          <thead><tr>
+            <th>Attribute</th>
+            ${docs.map(d => `<th><div class="compare-col-header">${d.name}</div><div style="font-size:.75rem;color:var(--gold)">${d.specialty}</div></th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${rows.map(([lbl, fn]) => `<tr><td>${lbl}</td>${docs.map(d => `<td>${fn(d)}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="display:flex;gap:10px;margin-top:24px;">
+          ${docs.map(d => `<button class="btn btn-gold btn-sm" style="flex:1" onclick="openBookModal('${d.id}');document.getElementById('compare-modal-bg').classList.remove('open');" ${d.isAvailable?'':'disabled'}>Book ${d.name.split(' ')[1] || d.name}</button>`).join('')}
+        </div>`;
+
+      document.getElementById('compare-modal-bg').classList.add('open');
+    }
+
+    // ── BOOKING ──────────────────────────────────────────────
+    const TIME_SLOTS = ['09:00 AM','09:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
+                        '02:00 PM','02:30 PM','03:00 PM','03:30 PM','04:00 PM','04:30 PM'];
+
+    function openBookModal(docId) {
+      if (!user || user.role !== 'patient') {
+        showToast('🔒','Login Required','Please log in as a patient to book an appointment.');
+        setTimeout(() => window.location.href = 'patient-login.html', 1500);
+        return;
+      }
+      bookingDoc   = db.doctors.find(d => d.id === docId);
+      selectedSlot = null;
+
+      const info = document.getElementById('book-doctor-info');
+      info.innerHTML = `
+        <div class="dc-avatar" style="background:${bookingDoc.color}22;color:${bookingDoc.color};width:52px;height:52px;font-size:1.2rem">${bookingDoc.initials}</div>
+        <div>
+          <div style="font-weight:700;font-size:1rem">${bookingDoc.name}</div>
+          <div style="font-size:.83rem;color:var(--gold-light)">${bookingDoc.specialty}</div>
+          <div style="font-size:.78rem;color:var(--text-muted);margin-top:3px">Fee: ₹${bookingDoc.consultationFee} &nbsp;·&nbsp; Avg wait: ~${bookingDoc.waitTime}</div>
+        </div>`;
+
+      document.getElementById('symptoms-input').value = '';
+      document.getElementById('book-error').style.display = 'none';
+
+      const grid = document.getElementById('timeslot-grid');
+      grid.innerHTML = TIME_SLOTS.map((s,i) =>
+        `<div class="timeslot ${i < 3 ? 'booked' : ''}" onclick="selectSlot(this,'${s}')">${i < 3 ? '✗ ' : ''}${s}</div>`
+      ).join('');
+
+      document.getElementById('book-modal-bg').classList.add('open');
+    }
+
+    function closeBookModal() {
+      document.getElementById('book-modal-bg').classList.remove('open');
+      bookingDoc = null; selectedSlot = null;
+    }
+
+    function selectSlot(el, slot) {
+      if (el.classList.contains('booked')) return;
+      document.querySelectorAll('.timeslot').forEach(t => t.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedSlot = slot;
+    }
+
+    function confirmBooking() {
+      const errEl = document.getElementById('book-error');
+      if (!selectedSlot) { errEl.textContent = 'Please select a time slot.'; errEl.style.display='block'; return; }
+      if (!user) { window.location.href = 'patient-login.html'; return; }
+
+      const symptoms = document.getElementById('symptoms-input').value;
+      const result   = QUEUE.bookAppointment(user.id, bookingDoc.id, selectedSlot, symptoms);
+
+      if (!result.success) {
+        errEl.textContent = result.error; errEl.style.display = 'block'; return;
+      }
+
+      closeBookModal();
+      db = getDB(); // refresh
+      showToast('✅', 'Booked!', `Token ${result.appointment.token} — ${bookingDoc.name} at ${selectedSlot}. Est. wait: ${result.appointment.estimatedWait}`);
+      renderDoctors();
+    }
+
+    // Toast helper
+    function showToast(icon, title, body) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span class="toast-icon">${icon}</span><div><div class="toast-title">${title}</div><div class="toast-body">${body}</div></div>`;
+      document.getElementById('toast-container').appendChild(t);
+      setTimeout(() => t.remove(), 5000);
+    }
+
+    // Close modals on backdrop click
+    document.getElementById('book-modal-bg').addEventListener('click', function(e) {
+      if (e.target === this) closeBookModal();
+    });
+    document.getElementById('compare-modal-bg').addEventListener('click', function(e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+
+    // ── BOOT ─────────────────────────────────────────────────
+    renderDoctors();
+
+    // Live queue tick —refresh every 15s
+    setInterval(() => {
+      QUEUE.tick();
+      db = getDB();
+      renderDoctors();
+    }, 15000);
+  </script>
+</body>
+</html>
