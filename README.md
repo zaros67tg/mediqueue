@@ -53,3 +53,4 @@ Password: doc
 The engine uses a Weighted Priority Algorithm. Appointments are sequenced based on 
 a combination of booking time and the severity of symptoms (High, Medium, Low triage levels). As doctors mark 
 consultations as complete, the system dynamically recalculates wait times for all remaining patients in the queue.
+samsung please accept
